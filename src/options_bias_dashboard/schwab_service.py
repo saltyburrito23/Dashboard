@@ -26,18 +26,22 @@ class SchwabResearchClient:
                 "The `schwabdev` package is not installed. Run `pip install -e .` first."
             ) from error
 
-        if not self.settings.has_credentials:
-            raise RuntimeError("APP_KEY and APP_SECRET must be present in the environment.")
-
         # Use project-local tokens.db if available (for Streamlit Cloud), otherwise use default
         tokens_db_path = None
         project_tokens = Path(__file__).parent.parent.parent / ".schwab_tokens.db"
         if project_tokens.exists():
             tokens_db_path = str(project_tokens.resolve())
 
+        # Allow initialization without credentials if tokens file exists
+        has_credentials = self.settings.has_credentials
+        has_tokens_file = tokens_db_path is not None or Path("~/.schwabdev/tokens.db").expanduser().exists()
+
+        if not has_credentials and not has_tokens_file:
+            raise RuntimeError("APP_KEY and APP_SECRET must be present in the environment, or a tokens file must exist.")
+
         self._client = schwabdev.Client(
-            self.settings.app_key,
-            self.settings.app_secret,
+            self.settings.app_key or "dummy_key",  # Provide dummy values when tokens file exists
+            self.settings.app_secret or "dummy_secret",
             callback_url=self.settings.callback_url,
             tokens_db=tokens_db_path,
         )
