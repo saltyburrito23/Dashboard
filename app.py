@@ -789,6 +789,11 @@ def main() -> None:
 
     try:
         with st.spinner(f"Loading live chain for {symbol}..."):
+            # TEMPORARILY DISABLE DATA FETCHING FOR DEBUGGING
+            st.warning("🔧 DEBUG MODE: Data fetching disabled")
+            st.info("If you see this message, the basic app is working. The crash happens during data fetching.")
+            st.stop()
+            
             snapshot = load_snapshot(
                 symbol=symbol,
                 min_dte=int(min_dte),
