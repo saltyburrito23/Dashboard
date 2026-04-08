@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from .config import Settings, load_settings
+from .app_config import Settings, load_settings
 from .normalization import extract_underlying_price
 
 

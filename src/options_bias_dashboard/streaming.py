@@ -8,7 +8,7 @@ from datetime import date, datetime, timedelta, timezone
 from itertools import zip_longest
 from zoneinfo import ZoneInfo
 
-from .config import Settings, load_settings
+from .app_config import Settings, load_settings
 from .models import OptionContract
 
 ET = ZoneInfo("America/New_York")

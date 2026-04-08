@@ -24,7 +24,7 @@ from options_bias_dashboard.analytics import (
     build_strike_overview,
     classify_bias_bucket,
 )
-from options_bias_dashboard.config import load_settings
+from options_bias_dashboard.app_config import load_settings
 from options_bias_dashboard.conviction import build_conviction_context
 from options_bias_dashboard.favorites import FavoriteQuote, build_favorite_quotes, load_favorite_symbols, toggle_favorite_symbol
 from options_bias_dashboard.models import AnalysisSnapshot, BiasComponent, CharmStrikeOverview, ConvictionContext, ExpiryOverview, IntradayTradePlan, StrikeOverview
