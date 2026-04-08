@@ -789,11 +789,6 @@ def main() -> None:
 
     try:
         with st.spinner(f"Loading live chain for {symbol}..."):
-            # TEMPORARILY DISABLE DATA FETCHING FOR DEBUGGING
-            st.warning("🔧 DEBUG MODE: Data fetching disabled")
-            st.info("If you see this message, the basic app is working. The crash happens during data fetching.")
-            st.stop()
-            
             snapshot = load_snapshot(
                 symbol=symbol,
                 min_dte=int(min_dte),
@@ -804,10 +799,10 @@ def main() -> None:
                 manual_nonce=st.session_state.manual_refresh_nonce,
             )
     except SchwabApiError as error:
-        st.error(str(error))
+        st.error(f"Schwab API Error: {str(error)}")
         st.stop()
     except Exception as error:
-        st.exception(error)
+        st.error(f"Error loading snapshot: {str(error)}")
         st.stop()
 
     market_ctx = load_market_context(
@@ -885,31 +880,36 @@ def main() -> None:
         analysis.metrics.underlying_price,
         hours_remaining=vol_panel.hours_remaining if vol_panel is not None else None,
     )
-    conviction_inputs_raw = load_conviction_inputs(
-        CONVICTION_SYMBOLS,
-        min_dte=int(min_dte),
-        max_dte=int(max_dte),
-        strike_window=int(strike_window),
-        refresh_bucket=refresh_bucket,
-        manual_nonce=st.session_state.manual_refresh_nonce,
-    )
-    conviction_contexts: tuple[ConvictionContext, ...] = tuple(
-        build_conviction_context(
-            symbol=requested_symbol,
-            analysis=(
-                analysis
-                if requested_symbol.removeprefix("$") == symbol.removeprefix("$")
-                else conviction_inputs_raw[requested_symbol]["analysis"]
-            ),
-            charm_rows=(
-                charm_rows
-                if requested_symbol.removeprefix("$") == symbol.removeprefix("$")
-                else conviction_inputs_raw[requested_symbol]["charm_rows"]
-            ),
-            primary_bias_score=analysis.result.score,
+    
+    try:
+        conviction_inputs_raw = load_conviction_inputs(
+            CONVICTION_SYMBOLS,
+            min_dte=int(min_dte),
+            max_dte=int(max_dte),
+            strike_window=int(strike_window),
+            refresh_bucket=refresh_bucket,
+            manual_nonce=st.session_state.manual_refresh_nonce,
         )
-        for requested_symbol in CONVICTION_SYMBOLS
-    )
+        conviction_contexts: tuple[ConvictionContext, ...] = tuple(
+            build_conviction_context(
+                symbol=requested_symbol,
+                analysis=(
+                    analysis
+                    if requested_symbol.removeprefix("$") == symbol.removeprefix("$")
+                    else conviction_inputs_raw[requested_symbol]["analysis"]
+                ),
+                charm_rows=(
+                    charm_rows
+                    if requested_symbol.removeprefix("$") == symbol.removeprefix("$")
+                    else conviction_inputs_raw[requested_symbol]["charm_rows"]
+                ),
+                primary_bias_score=analysis.result.score,
+            )
+            for requested_symbol in CONVICTION_SYMBOLS
+        )
+    except Exception as e:
+        # Conviction loading can timeout on Streamlit Cloud, provide graceful fallback
+        conviction_contexts = tuple()
     chart_contracts = [
         contract
         for contract in contracts
