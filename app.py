@@ -784,7 +784,11 @@ def main() -> None:
         st.stop()
 
     history_frequency = int(settings.history_frequency)
-    st_autorefresh(interval=refresh_seconds * 1000, key=f"refresh-{symbol}")
+    
+    # Disable auto-refresh on Streamlit Cloud (free tier has memory issues with refresh)
+    # Users can manually refresh using the "Refresh now" button instead
+    # st_autorefresh(interval=refresh_seconds * 1000, key=f"refresh-{symbol}")
+    
     refresh_bucket = int(time.time() // refresh_seconds)
 
     try:
