@@ -763,15 +763,24 @@ def main() -> None:
         if st.button("Refresh now", width="stretch"):
             st.session_state.manual_refresh_nonce += 1
 
-        if settings.has_credentials:
-            st.success("Schwab credentials found in `.env`.")
+    if settings.has_credentials:
+        st.success("Schwab credentials found in `.env`.")
+    else:
+        # Check if tokens file exists as alternative
+        from pathlib import Path
+        tokens_exist = (Path(__file__).parent / ".schwab_tokens.db").exists()
+        if tokens_exist:
+            st.info("Using Schwab tokens file for authentication.")
         else:
-            st.error("Missing `APP_KEY` or `APP_SECRET` in `.env`.")
+            st.error("Missing `APP_KEY` or `APP_SECRET` in `.env` and no tokens file found.")
 
-        st.caption("First authenticated run will use schwabdev's browser-based OAuth flow.")
+    # Allow app to run if either credentials exist or tokens file exists
+    from pathlib import Path
+    tokens_file = Path(__file__).parent / ".schwab_tokens.db"
+    has_auth = settings.has_credentials or tokens_file.exists()
 
-    if not settings.has_credentials:
-        st.info("Add your Schwab credentials to `.env`, then rerun the app.")
+    if not has_auth:
+        st.info("Add your Schwab credentials to `.env` or ensure tokens file exists, then rerun the app.")
         st.stop()
 
     history_frequency = int(settings.history_frequency)
