@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from .app_config import Settings, load_settings
 from .normalization import extract_underlying_price
@@ -27,10 +29,17 @@ class SchwabResearchClient:
         if not self.settings.has_credentials:
             raise RuntimeError("APP_KEY and APP_SECRET must be present in the environment.")
 
+        # Use project-local tokens.db if available (for Streamlit Cloud), otherwise use default
+        tokens_db_path = None
+        project_tokens = Path(__file__).parent.parent.parent / ".schwab_tokens.db"
+        if project_tokens.exists():
+            tokens_db_path = str(project_tokens.resolve())
+
         self._client = schwabdev.Client(
             self.settings.app_key,
             self.settings.app_secret,
             callback_url=self.settings.callback_url,
+            tokens_db=tokens_db_path,
         )
 
     def close(self) -> None:
