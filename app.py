@@ -657,9 +657,8 @@ def render_target_snapshot(
 def main() -> None:
     settings = load_settings()
     # favorite_symbols = load_favorite_symbols()  # Disabled to reduce memory
-    st.set_page_config(page_title="Dashboard V2", layout="wide")
-    st.title("Dashboard V2")
-    st.caption("Live Schwab options research dashboard using schwabdev on macOS-friendly API polling.")
+    st.set_page_config(page_title="Dashboard", layout="wide")
+    st.title("Dashboard")
 
     if "manual_refresh_nonce" not in st.session_state:
         st.session_state.manual_refresh_nonce = 0
@@ -683,21 +682,16 @@ def main() -> None:
         )
         strike_window = st.slider("ATM strikes to score", min_value=4, max_value=24, value=settings.default_strike_window)
         strike_count = st.slider("API strike count", min_value=6, max_value=80, value=settings.default_strike_count)
-        refresh_seconds = st.slider("Refresh seconds", min_value=10, max_value=120, value=settings.default_refresh_seconds)
+        refresh_seconds = 120
 
         if st.button("Refresh now", width="stretch"):
             st.session_state.manual_refresh_nonce += 1
 
-    if settings.has_credentials:
-        st.success("Schwab credentials found in `.env`.")
-    else:
-        # Check if tokens file exists as alternative
-        from pathlib import Path
-        tokens_exist = (Path(__file__).parent / ".schwab_tokens.db").exists()
-        if tokens_exist:
-            st.info("Using Schwab tokens file for authentication.")
-        else:
-            st.error("Missing `APP_KEY` or `APP_SECRET` in `.env` and no tokens file found.")
+    # Check if tokens file exists for authentication
+    from pathlib import Path
+    tokens_exist = (Path(__file__).parent / ".schwab_tokens.db").exists()
+    if not tokens_exist and not settings.has_credentials:
+        st.error("Missing Schwab authentication. Please authenticate first.")
 
     # Allow app to run if either credentials exist or tokens file exists
     from pathlib import Path
@@ -983,8 +977,6 @@ def render_overview(
         health_warnings.append("Limited contract coverage in the selected strike/DTE window.")
     if health_warnings:
         st.warning("Data health notice: " + " ".join(health_warnings))
-    else:
-        st.success("Snapshot health looks good: key inputs are available.")
 
     structure_cols = st.columns(5)
     structure_cols[0].metric("YDL", format_currency(premarket_structure.yesterday_low))
