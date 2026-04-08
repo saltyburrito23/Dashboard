@@ -798,9 +798,35 @@ def main() -> None:
         hours_remaining=vol_panel.hours_remaining if vol_panel is not None else None,
     )
     
-    # Skip conviction context on Streamlit Cloud to reduce load
-    # (loads too many API requests and causes crashes)
-    conviction_contexts: tuple[ConvictionContext, ...] = tuple()
+    try:
+        conviction_inputs_raw = load_conviction_inputs(
+            CONVICTION_SYMBOLS,
+            min_dte=int(min_dte),
+            max_dte=int(max_dte),
+            strike_window=int(strike_window),
+            refresh_bucket=refresh_bucket,
+            manual_nonce=st.session_state.manual_refresh_nonce,
+        )
+        conviction_contexts: tuple[ConvictionContext, ...] = tuple(
+            build_conviction_context(
+                symbol=requested_symbol,
+                analysis=(
+                    analysis
+                    if requested_symbol.removeprefix("$") == symbol.removeprefix("$")
+                    else conviction_inputs_raw[requested_symbol]["analysis"]
+                ),
+                charm_rows=(
+                    charm_rows
+                    if requested_symbol.removeprefix("$") == symbol.removeprefix("$")
+                    else conviction_inputs_raw[requested_symbol]["charm_rows"]
+                ),
+                primary_bias_score=analysis.result.score,
+            )
+            for requested_symbol in CONVICTION_SYMBOLS
+        )
+    except Exception as e:
+        # Conviction loading can timeout on Streamlit Cloud, provide graceful fallback
+        conviction_contexts = tuple()
     chart_contracts = [
         contract
         for contract in contracts
