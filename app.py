@@ -405,6 +405,7 @@ def _symbol_variants(symbol: str) -> tuple[str, ...]:
 
 
 @st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False)
 def load_conviction_inputs(
     symbols: tuple[str, ...],
     min_dte: int,
