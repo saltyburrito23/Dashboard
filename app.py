@@ -26,7 +26,9 @@ from options_bias_dashboard.analytics import (
 )
 from options_bias_dashboard.app_config import load_settings
 from options_bias_dashboard.conviction import build_conviction_context
-from options_bias_dashboard.favorites import FavoriteQuote, build_favorite_quotes, load_favorite_symbols, toggle_favorite_symbol
+# Favorites functionality removed to reduce memory usage on Streamlit Cloud
+# # Favorites functionality removed to reduce memory usage on Streamlit Cloud
+# from options_bias_dashboard.favorites import FavoriteQuote, build_favorite_quotes, load_favorite_symbols, toggle_favorite_symbol
 from options_bias_dashboard.models import AnalysisSnapshot, BiasComponent, CharmStrikeOverview, ConvictionContext, ExpiryOverview, IntradayTradePlan, StrikeOverview
 from options_bias_dashboard.normalization import extract_intraday_range, extract_regular_session_closes, normalize_option_chain
 from options_bias_dashboard.schwab_service import SchwabApiError, SchwabResearchClient
@@ -138,69 +140,12 @@ def limit_expiry_rows(rows: list[ExpiryOverview], limit: int) -> list[ExpiryOver
     return list(rows[:limit])
 
 
-def _favorite_change_color(value: float | None) -> str:
-    if value is None:
-        return "#c9ced8"
-    if value > 0:
-        return POSITIVE_COLOR
-    if value < 0:
-        return NEGATIVE_COLOR
-    return "#c9ced8"
+# Favorite change color removed (favorites disabled)
 
 
-def render_favorite_cards(quotes: tuple[FavoriteQuote, ...]) -> None:
-    if not quotes:
-        return
-    st.markdown("#### Favorite Stocks")
-    st.markdown(
-        """
-        <style>
-        .favorite-card {
-            background: linear-gradient(180deg, #141826 0%, #0f1320 100%);
-            border: 1px solid #2d3553;
-            border-radius: 14px;
-            padding: 0.8rem 0.9rem;
-            min-height: 92px;
-            box-shadow: 0 10px 24px rgba(15, 19, 32, 0.18);
-        }
-        .favorite-symbol {
-            color: #ffffff;
-            font-size: 1.02rem;
-            font-weight: 800;
-            letter-spacing: 0.04em;
-            margin-bottom: 0.35rem;
-        }
-        .favorite-price {
-            color: #eff3ff;
-            font-size: 1.15rem;
-            font-weight: 650;
-            margin-bottom: 0.2rem;
-        }
-        .favorite-change {
-            font-size: 0.95rem;
-            font-weight: 600;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-    for start in range(0, len(quotes), 5):
-        row_quotes = quotes[start : start + 5]
-        columns = st.columns(len(row_quotes))
-        for column, quote in zip(columns, row_quotes):
-            price_text = format_currency(quote.price)
-            change_text = f"{format_signed_currency(quote.change)} ({format_percent(quote.percent_change)})"
-            column.markdown(
-                (
-                    "<div class='favorite-card'>"
-                    f"<div class='favorite-symbol'>{html.escape(quote.symbol)}</div>"
-                    f"<div class='favorite-price'>{html.escape(price_text)}</div>"
-                    f"<div class='favorite-change' style='color: {_favorite_change_color(quote.change)};'>"
-                    f"{html.escape(change_text)}</div>"
-                    "</div>"
-                ),
-                unsafe_allow_html=True,
-            )
+def render_favorite_cards(quotes) -> None:
+    # Favorites functionality disabled to reduce memory usage
+    pass
 
 
 def build_open_interest_figure(rows: list[StrikeOverview]) -> go.Figure:
@@ -431,18 +376,19 @@ def load_market_context(
         return None
 
 
-@st.cache_data(show_spinner=False)
-def load_favorite_quotes(
-    symbols: tuple[str, ...],
-    refresh_bucket: int,
-    manual_nonce: int,
-) -> tuple[FavoriteQuote, ...]:
-    del refresh_bucket, manual_nonce
-    if not symbols:
-        return tuple()
-    client = get_client()
-    payload = client.fetch_quotes(list(symbols))
-    return build_favorite_quotes(symbols, payload)
+# load_favorite_quotes removed (favorites functionality disabled)
+# @st.cache_data(show_spinner=False)
+# def load_favorite_quotes(
+#     symbols: tuple[str, ...],
+#     refresh_bucket: int,
+#     manual_nonce: int,
+# ) -> tuple[FavoriteQuote, ...]:
+#     del refresh_bucket, manual_nonce
+#     if not symbols:
+#         return tuple()
+#     client = get_client()
+#     payload = client.fetch_quotes(list(symbols))
+#     return build_favorite_quotes(symbols, payload)
 
 
 def _symbol_variants(symbol: str) -> tuple[str, ...]:
@@ -709,45 +655,23 @@ def render_target_snapshot(
 
 def main() -> None:
     settings = load_settings()
-    favorite_symbols = load_favorite_symbols()
+    # favorite_symbols = load_favorite_symbols()  # Disabled to reduce memory
     st.set_page_config(page_title="Dashboard V2", layout="wide")
     st.title("Dashboard V2")
     st.caption("Live Schwab options research dashboard using schwabdev on macOS-friendly API polling.")
 
     if "manual_refresh_nonce" not in st.session_state:
         st.session_state.manual_refresh_nonce = 0
-    if "favorite_feedback" in st.session_state:
-        st.toast(st.session_state.pop("favorite_feedback"))
+    # Favorite feedback removed (favorites disabled)
 
     with st.sidebar:
         st.header("Controls")
         st.caption("Ticker")
-        ticker_col, favorite_col = st.columns([6, 1])
-        with ticker_col:
-            symbol = st.text_input(
-                "Ticker",
-                value=settings.default_symbol,
-                label_visibility="collapsed",
-            ).strip().upper()
-        with favorite_col:
-            favorite_label = "★" if symbol in favorite_symbols else "☆"
-            favorite_help = (
-                f"Remove {symbol} from favorites"
-                if symbol in favorite_symbols
-                else f"Add {symbol} to favorites"
-            )
-            if st.button(
-                favorite_label,
-                key="toggle_favorite_symbol",
-                help=favorite_help,
-                width='stretch',
-                disabled=not symbol,
-            ):
-                favorite_symbols = load_favorite_symbols()
-                favorite_symbols = toggle_favorite_symbol(symbol)
-                action = "Added" if symbol in favorite_symbols else "Removed"
-                st.session_state.favorite_feedback = f"{action} {symbol} {'to' if action == 'Added' else 'from'} favorites."
-                st.rerun()
+        symbol = st.text_input(
+            "Ticker",
+            value=settings.default_symbol,
+            label_visibility="collapsed",
+        ).strip().upper()
         min_dte = st.number_input("Min DTE", min_value=0, max_value=365, value=settings.default_min_dte)
         max_dte = st.number_input("Max DTE", min_value=1, max_value=365, value=settings.default_max_dte)
         expiry_chart_max_dte = st.number_input(
@@ -815,18 +739,7 @@ def main() -> None:
         manual_nonce=st.session_state.manual_refresh_nonce,
     )
 
-    favorite_quotes: tuple[FavoriteQuote, ...] = tuple()
-    if favorite_symbols:
-        try:
-            favorite_quotes = load_favorite_quotes(
-                tuple(favorite_symbols),
-                refresh_bucket=refresh_bucket,
-                manual_nonce=st.session_state.manual_refresh_nonce,
-            )
-        except SchwabApiError:
-            favorite_quotes = tuple()
-
-    render_favorite_cards(favorite_quotes)
+    # Favorite quotes loading removed (favorites functionality disabled)
 
     contracts = normalize_option_chain(snapshot["chain"])
     closes = extract_regular_session_closes(snapshot.get("history", {}))
