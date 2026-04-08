@@ -657,8 +657,8 @@ def render_target_snapshot(
 def main() -> None:
     settings = load_settings()
     # favorite_symbols = load_favorite_symbols()  # Disabled to reduce memory
-    st.set_page_config(page_title="Dashboard", layout="wide")
-    st.title("Dashboard")
+    st.set_page_config(page_title="Options Dashboard", layout="wide")
+    st.title("Options Dashboard")
 
     if "manual_refresh_nonce" not in st.session_state:
         st.session_state.manual_refresh_nonce = 0
@@ -682,16 +682,19 @@ def main() -> None:
         )
         strike_window = st.slider("ATM strikes to score", min_value=4, max_value=24, value=settings.default_strike_window)
         strike_count = st.slider("API strike count", min_value=6, max_value=80, value=settings.default_strike_count)
-        refresh_seconds = 120
+        refresh_seconds = st.slider("Refresh seconds", min_value=10, max_value=120, value=settings.default_refresh_seconds)
 
         if st.button("Refresh now", width="stretch"):
             st.session_state.manual_refresh_nonce += 1
 
-    # Check if tokens file exists for authentication
-    from pathlib import Path
-    tokens_exist = (Path(__file__).parent / ".schwab_tokens.db").exists()
-    if not tokens_exist and not settings.has_credentials:
-        st.error("Missing Schwab authentication. Please authenticate first.")
+    if not settings.has_credentials:
+        # Check if tokens file exists as alternative
+        from pathlib import Path
+        tokens_exist = (Path(__file__).parent / ".schwab_tokens.db").exists()
+        if tokens_exist:
+            st.info("Using Schwab tokens file for authentication.")
+        else:
+            st.error("Missing `APP_KEY` or `APP_SECRET` in `.env` and no tokens file found.")
 
     # Allow app to run if either credentials exist or tokens file exists
     from pathlib import Path
