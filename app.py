@@ -740,7 +740,7 @@ def main() -> None:
                 favorite_label,
                 key="toggle_favorite_symbol",
                 help=favorite_help,
-                use_container_width=True,
+                width='stretch',
                 disabled=not symbol,
             ):
                 favorite_symbols = load_favorite_symbols()
@@ -946,7 +946,7 @@ def main() -> None:
             "symbol": symbol,
             "captured_at": captured_at,
             "raw_snapshot": snapshot,
-            "analysis": analysis,
+            "analysis": analysis if hasattr(analysis, 'result') and analysis.result is not None else None,
             "volatility_panel": vol_panel,
             "trade_plan": trade_plan,
             "premarket_structure": premarket_structure,
@@ -1242,17 +1242,17 @@ def render_snapshot_review(summary: SnapshotReviewSummary, symbol: str) -> None:
         left, right = st.columns(2)
         with left:
             st.markdown("**By Bias Bucket**")
-            st.dataframe(_group_rows_for_display(summary.by_bias_bucket), use_container_width=True, hide_index=True)
+            st.dataframe(_group_rows_for_display(summary.by_bias_bucket), width='stretch', hide_index=True)
             st.markdown("**By Pre-Market Structure**")
-            st.dataframe(_group_rows_for_display(summary.by_premarket), use_container_width=True, hide_index=True)
+            st.dataframe(_group_rows_for_display(summary.by_premarket), width='stretch', hide_index=True)
         with right:
             st.markdown("**By GEX / Charm Regime**")
-            st.dataframe(_group_rows_for_display(summary.by_regime), use_container_width=True, hide_index=True)
+            st.dataframe(_group_rows_for_display(summary.by_regime), width='stretch', hide_index=True)
 
         best_left, best_right = st.columns(2)
         with best_left:
             st.markdown("**Best Historical Follow-Through Setups**")
-            st.dataframe(_group_rows_for_display(summary.best_setups), use_container_width=True, hide_index=True)
+            st.dataframe(_group_rows_for_display(summary.best_setups), width='stretch', hide_index=True)
         with best_right:
             st.markdown("**What This Means**")
             st.caption(
@@ -1283,7 +1283,7 @@ def render_snapshot_review(summary: SnapshotReviewSummary, symbol: str) -> None:
             }
             for row in summary.rows[:25]
         ]
-        st.dataframe(recent_rows, use_container_width=True, hide_index=True)
+        st.dataframe(recent_rows, width='stretch', hide_index=True)
 
 
 def render_details(
@@ -1308,7 +1308,7 @@ def render_details(
                 label_visibility="collapsed",
             )
         oi_rows = limit_rows_by_strike_distance(list(chart_strike_rows), metrics.underlying_price, int(oi_display_count))
-        st.plotly_chart(build_open_interest_figure(oi_rows), use_container_width=True)
+        st.plotly_chart(build_open_interest_figure(oi_rows), width='stretch')
 
     with chart_right:
         gex_mode_col, gex_count_col = st.columns([3, 2])
@@ -1332,7 +1332,7 @@ def render_details(
             )
         if gex_chart_mode == "By Expiry":
             expiry_rows = limit_expiry_rows(list(chart_expiry_rows), int(gex_display_count))
-            st.plotly_chart(build_gamma_expiry_figure(expiry_rows), use_container_width=True)
+            st.plotly_chart(build_gamma_expiry_figure(expiry_rows), width='stretch')
             st.caption(
                 "Expiry mode rolls the same estimated GEX math up by expiration instead of by strike. "
                 "It is useful for seeing which maturity bucket is carrying the most net gamma."
@@ -1346,7 +1346,7 @@ def render_details(
                     put_wall=metrics.put_wall,
                     gex_flip=metrics.gex_flip_estimate,
                 ),
-                use_container_width=True,
+                width='stretch',
             )
             st.caption(
                 "Strike mode shows the local gamma structure by price level, including the current Put Wall, "
@@ -1368,7 +1368,7 @@ def render_details(
             metrics.underlying_price,
             int(charm_display_count),
         )
-        st.plotly_chart(build_charm_figure(charm_display_rows), use_container_width=True)
+        st.plotly_chart(build_charm_figure(charm_display_rows), width='stretch')
         if not chart_charm_rows:
             st.caption("Charm is unavailable for the current ticker/filter set, so this chart is intentionally empty.")
         else:
