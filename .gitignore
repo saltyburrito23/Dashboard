@@ -3,11 +3,12 @@
 __pycache__/
 .pytest_cache/
 .DS_Store
+.idea/
+dashboard_snapshots/
+*.egg-info/
 *.pyc
 *.pyo
 *.pyd
 *.db
 *.sqlite
 *.sqlite3
-dashboard_snapshots/
-

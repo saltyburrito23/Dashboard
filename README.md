@@ -1,6 +1,6 @@
-# Dashboard V3
+# Dashboard V3 Web
 
-Live research dashboard for Schwab/thinkorswim options data using [`schwabdev`](https://github.com/tylerebowers/Schwabdev). This version is a polling-based Mac-friendly dashboard that:
+Hosted/web research dashboard for Schwab/thinkorswim options data using [`schwabdev`](https://github.com/tylerebowers/Schwabdev). This version is a polling-based Mac-friendly dashboard that:
 
 - loads a live option chain from Schwab
 - computes an explainable `bullish`, `bearish`, or `mixed` bias
@@ -10,9 +10,10 @@ Live research dashboard for Schwab/thinkorswim options data using [`schwabdev`](
 
 This is a decision-support dashboard, not an order-entry bot. The bias engine is intentionally explainable and rules-based so you can see why it leans bullish, bearish, or mixed.
 
-## What’s New in Dashboard V3
+## What’s New in Dashboard V3 Web
 
-- Improved snapshot health messaging so you can see when IV skew, liquidity, or contract coverage is weak.
+- Archived snapshot storage and snapshot review were removed from the web build.
+- The hosted app now focuses on live analysis, trade planning, charts, and targets only.
 - Clearer explanation for `Wait / No New Premium` cases, including why the model is pausing.
 - More robust dynamic target handling when intraday high/low data is unavailable.
 - `.DS_Store` is ignored so Mac file-system artifacts stay out of the repository.
@@ -73,6 +74,7 @@ tests/
 
 - Uses REST polling instead of websocket streaming for the first version
 - Pulls option chain, quote context, and short-term price history
+- Does not persist local snapshot archives in the web build
 - Scores directional bias from:
   - call vs put volume
   - call vs put open interest
@@ -88,4 +90,3 @@ Once this baseline is working with your Schwab credentials, the next upgrade is 
 ## Reminder
 
 Options involve risk. This tool is for research and workflow support only and should not be treated as individualized investment advice.
-

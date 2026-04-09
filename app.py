@@ -34,8 +34,6 @@ from options_bias_dashboard.normalization import extract_intraday_range, extract
 from options_bias_dashboard.schwab_service import SchwabApiError, SchwabResearchClient
 from options_bias_dashboard.price_targets import build_directional_targets, build_price_target_ladder, previous_session_bias_score
 from options_bias_dashboard.session_levels import PremarketStructure, build_premarket_structure, latest_completed_daily_bar
-from options_bias_dashboard.snapshot_review import SnapshotReviewGroup, SnapshotReviewSummary, build_snapshot_review
-from options_bias_dashboard.snapshots import detect_snapshot_gaps, get_snapshot_health_status, write_dashboard_snapshot
 from options_bias_dashboard.trade_plan import build_intraday_trade_plan
 from options_bias_dashboard.volatility import VolatilityPanel, build_volatility_panel, parse_batch_prev_closes, parse_batch_quotes
 
@@ -466,16 +464,6 @@ def load_conviction_inputs(
     return results
 
 
-@st.cache_data(show_spinner=False)
-def load_snapshot_review_data(
-    symbol: str,
-    refresh_bucket: int,
-    manual_nonce: int,
-) -> SnapshotReviewSummary:
-    del refresh_bucket, manual_nonce
-    return build_snapshot_review(symbol)
-
-
 def build_target_payload(
     *,
     spot: float,
@@ -657,8 +645,8 @@ def render_target_snapshot(
 def main() -> None:
     settings = load_settings()
     # favorite_symbols = load_favorite_symbols()  # Disabled to reduce memory
-    st.set_page_config(page_title="Options Dashboard", layout="wide")
-    st.title("Options Dashboard")
+    st.set_page_config(page_title="Dashboard V3 Web", layout="wide")
+    st.title("Dashboard V3 Web")
 
     if "manual_refresh_nonce" not in st.session_state:
         st.session_state.manual_refresh_nonce = 0
@@ -870,31 +858,8 @@ def main() -> None:
         settings=settings,
         as_of=captured_at,
     )
-    write_dashboard_snapshot(
-        {
-            "symbol": symbol,
-            "captured_at": captured_at,
-            "raw_snapshot": snapshot,
-            "analysis": analysis if hasattr(analysis, 'result') and analysis.result is not None else None,
-            "volatility_panel": vol_panel,
-            "trade_plan": trade_plan,
-            "premarket_structure": premarket_structure,
-            "static_targets": prior_session_target_payload,
-            "dynamic_targets": dynamic_target_payload,
-            "conviction_contexts": conviction_contexts,
-        },
-        captured_at=captured_at,
-        background=True,  # Non-blocking background write
-    )
-    snapshot_review = load_snapshot_review_data(
-        symbol=symbol,
-        refresh_bucket=refresh_bucket,
-        manual_nonce=st.session_state.manual_refresh_nonce,
-    )
 
-    overview_tab, plan_tab, charts_tab, targets_tab, snapshot_review_tab = st.tabs(
-        ["Overview", "Plan", "Charts", "Targets", "Snapshot Review"]
-    )
+    overview_tab, plan_tab, charts_tab, targets_tab = st.tabs(["Overview", "Plan", "Charts", "Targets"])
 
     with overview_tab:
         render_overview(snapshot, analysis, refresh_seconds, premarket_structure)
@@ -924,9 +889,6 @@ def main() -> None:
             caption="Uses the current live session inputs and adapts throughout the day.",
             empty_message="Current dynamic predictions are unavailable.",
         )
-
-    with snapshot_review_tab:
-        render_snapshot_review(snapshot_review, symbol)
 
 
 def render_overview(
@@ -1084,134 +1046,6 @@ def render_intraday_trade_plan(plan: IntradayTradePlan) -> None:
         st.caption(plan.conviction_note)
         for note in plan.notes:
             st.write(f"- {note}")
-
-
-def _group_rows_for_display(groups: tuple[SnapshotReviewGroup, ...]) -> list[dict[str, object]]:
-    return [
-        {
-            "Group": group.label,
-            "Samples": group.samples,
-            "Directional": group.directional_samples,
-            "Bias Accuracy": format_percent(group.bias_accuracy),
-            "Upward": format_percent(group.upward_accuracy),
-            "Downward": format_percent(group.downward_accuracy),
-            "Target Hit": format_percent(group.target_hit_rate),
-            "Avg Follow-Through": format_multiple(group.avg_follow_through_em),
-        }
-        for group in groups
-    ]
-
-
-def render_snapshot_review(summary: SnapshotReviewSummary, symbol: str) -> None:
-    with st.container(border=True):
-        st.subheader("Snapshot Review")
-        st.caption(
-            "Scores archived 15-minute snapshots against the rest of that same settled regular session. "
-            "Bias accuracy uses the later same-day close, and first target hit uses the saved dynamic ladder."
-        )
-
-        # Add snapshot health status
-        health_status = get_snapshot_health_status(symbol)
-        if health_status["status"] == "error":
-            st.error(f"Snapshot system health: {health_status['message']}")
-        elif health_status["status"] == "warning":
-            st.warning("⚠️ No recent snapshots detected. Check system health.")
-        else:
-            st.success("✅ Snapshot system healthy")
-
-        # Show health metrics
-        health_cols = st.columns(4)
-        health_cols[0].metric("Total Snapshots", f"{health_status.get('total_snapshots', 0)}")
-        health_cols[1].metric("Storage Used", f"{health_status.get('total_size_mb', 0):.1f}MB")
-        if health_status.get("newest_snapshot"):
-            health_cols[2].metric("Latest Snapshot", health_status["newest_snapshot"][:16])  # YYYY-MM-DD HH:MM
-        if health_status.get("oldest_snapshot"):
-            health_cols[3].metric("Oldest Snapshot", health_status["oldest_snapshot"][:10])  # YYYY-MM-DD
-
-        # Check for gaps
-        gaps = detect_snapshot_gaps(symbol, days_back=3)
-        if gaps:
-            with st.expander("⚠️ Snapshot Coverage Gaps Detected", expanded=False):
-                for gap in gaps:
-                    st.write(f"**{gap['date']}**: {gap['missing_snapshots']}/{gap['total_expected']} snapshots missing "
-                           f"({gap['coverage_percent']:.1f}% coverage)")
-
-        if summary.total_snapshots <= 0:
-            st.info("No settled-session snapshots are ready to score for this ticker yet.")
-            if summary.incomplete_sessions > 0:
-                st.caption(
-                    f"{summary.incomplete_sessions} current or incomplete session(s) are excluded until the session settles."
-                )
-            return
-
-        top = st.columns(6)
-        top[0].metric("Snapshots Scored", str(summary.total_snapshots))
-        top[1].metric("Settled Sessions", str(summary.completed_sessions))
-        top[2].metric("Upward Accuracy", format_percent(summary.upward_accuracy))
-        top[3].metric("Downward Accuracy", format_percent(summary.downward_accuracy))
-        top[4].metric("First Target Hit", format_percent(summary.target_hit_rate))
-        top[5].metric("Avg Follow-Through", format_multiple(summary.avg_follow_through_em))
-
-        st.caption(
-            "Bias buckets: "
-            f"Strong Bullish {summary.strong_bullish_samples}, "
-            f"Bullish Lean {summary.bullish_lean_samples}, "
-            f"Neutral/Mixed {summary.neutral_samples}, "
-            f"Bearish Lean {summary.bearish_lean_samples}, "
-            f"Strong Bearish {summary.strong_bearish_samples}."
-        )
-
-        if summary.incomplete_sessions > 0:
-            st.caption(
-                f"{summary.incomplete_sessions} current or incomplete session(s) are excluded until the final regular-session bars are available."
-            )
-
-        left, right = st.columns(2)
-        with left:
-            st.markdown("**By Bias Bucket**")
-            st.dataframe(_group_rows_for_display(summary.by_bias_bucket), width='stretch', hide_index=True)
-            st.markdown("**By Pre-Market Structure**")
-            st.dataframe(_group_rows_for_display(summary.by_premarket), width='stretch', hide_index=True)
-        with right:
-            st.markdown("**By GEX / Charm Regime**")
-            st.dataframe(_group_rows_for_display(summary.by_regime), width='stretch', hide_index=True)
-
-        best_left, best_right = st.columns(2)
-        with best_left:
-            st.markdown("**Best Historical Follow-Through Setups**")
-            st.dataframe(_group_rows_for_display(summary.best_setups), width='stretch', hide_index=True)
-        with best_right:
-            st.markdown("**What This Means**")
-            st.caption(
-                "Strong Bullish / Strong Bearish are the old hard directional buckets. "
-                "Bullish Lean / Bearish Lean now let the review learn from positive or negative setups that did not fully clear the old ±18 cutoff."
-            )
-
-        st.markdown("**Recent Scored Snapshots**")
-        recent_rows = [
-            {
-                "Captured": row.captured_at.strftime("%Y-%m-%d %H:%M"),
-                "Bias Bucket": row.bias_bucket,
-                "Model Label": row.bias_label.title(),
-                "Score": f"{row.bias_score:+.1f}",
-                "Confidence": f"{row.confidence:.0f}/100",
-                "Pre-Market": row.premarket_structure,
-                "GEX": row.gex_regime,
-                "Charm": row.charm_regime,
-                "End Move": format_signed_currency(row.terminal_move),
-                "Bias Correct": (
-                    "Yes" if row.bias_correct is True else "No" if row.bias_correct is False else "n/a"
-                ),
-                "First Target": row.first_target_hit or "None",
-                "Minutes To Hit": (
-                    f"{row.minutes_to_first_target:.0f}" if row.minutes_to_first_target is not None else "n/a"
-                ),
-                "Follow-Through": format_multiple(row.follow_through_em_ratio),
-            }
-            for row in summary.rows[:25]
-        ]
-        st.dataframe(recent_rows, width='stretch', hide_index=True)
-
 
 def render_details(
     analysis: AnalysisSnapshot,

@@ -1,7 +1,0 @@
-pandas>=2.2.0
-plotly>=6.0.0
-python-dotenv>=1.0.1
-schwabdev>=3.0.3
-streamlit>=1.42.0
-streamlit-autorefresh>=1.0.1
-watchdog>=4.0.0

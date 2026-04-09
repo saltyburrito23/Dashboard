@@ -1,2 +1,1 @@
-"""Dashboard V2 — Schwab options research package."""
-
+"""Dashboard V3 Web — Schwab options research package."""
