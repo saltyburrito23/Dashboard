@@ -8,22 +8,27 @@ echo "🔐 Starting Schwab authentication..."
 echo "This will open your browser for login. Complete the OAuth flow."
 echo ""
 
-# Activate virtual environment
-source .venv/bin/activate
+PYTHON_BIN="$PROJECT_ROOT/.venv/bin/python"
+TOKEN_DB=".schwab_tokens.db"
 
-# Run streamlit to trigger auth (timeout after 2 minutes if user doesn't complete)
-timeout 120 streamlit run app.py 2>&1 | grep -i "after authorizing" || true
+if [ ! -x "$PYTHON_BIN" ]; then
+    PYTHON_BIN="python3"
+fi
+
+# Run Streamlit through Python directly so copied virtualenv entrypoints
+# are not required for the auth-refresh flow to work.
+timeout 120 "$PYTHON_BIN" -m streamlit run app.py 2>&1 | grep -i "after authorizing" || true
 
 echo ""
-echo "⏳ Waiting for token file to be created..."
+echo "⏳ Waiting for token database to be created..."
 sleep 2
 
-if [ -f ".token.json" ]; then
-    echo "✅ Token file created successfully!"
+if [ -f "$TOKEN_DB" ]; then
+    echo "✅ Token database created successfully!"
     echo ""
     echo "📤 Pushing to GitHub..."
     
-    git add .token.json requirements.txt pyproject.toml
+    git add "$TOKEN_DB" requirements.txt pyproject.toml
     git commit -m "Update Schwab API tokens (auto-synced from local auth)" || echo "⚠️  No changes to commit"
     git push origin main
     
@@ -31,6 +36,6 @@ if [ -f ".token.json" ]; then
     echo ""
     echo "💡 Your Streamlit Cloud app will automatically use these tokens on the next deploy."
 else
-    echo "❌ Token file not found. Make sure you completed the Schwab OAuth flow."
+    echo "❌ Token database not found. Make sure you completed the Schwab OAuth flow."
     exit 1
 fi
